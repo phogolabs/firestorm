@@ -1,4 +1,4 @@
-package aspect
+package firestorm
 
 import "cloud.google.com/go/datastore"
 

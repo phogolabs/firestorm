@@ -1,4 +1,4 @@
-package aspect
+package firestorm
 
 import (
 	"context"
@@ -6,8 +6,11 @@ import (
 	"reflect"
 
 	"cloud.google.com/go/datastore"
+	"github.com/jmoiron/sqlx/reflectx"
 	"google.golang.org/api/iterator"
 )
+
+var cache = reflectx.NewMapper("firestorm")
 
 // PrimaryKey is the primary key name
 const PrimaryKey = "__key__"
