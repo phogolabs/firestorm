@@ -9,6 +9,12 @@ type Entity interface {
 	Kind() string
 }
 
+// EntityPartial represents a partial entity
+type EntityPartial interface {
+	Entity() Entity
+	Properties() []string
+}
+
 // Prepare entity for datastore operation
 func Prepare(entity Entity) {
 	key := entity.Key()

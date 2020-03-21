@@ -49,15 +49,27 @@ func (list *PropertyList) Append(prop datastore.Property) {
 
 // LoadFromStruct loads all of the struct's  properties into l.
 // It does not first reset *l to an empty slice.
-func (list *PropertyList) LoadFromStruct(input interface{}, names ...string) error {
+func (list *PropertyList) LoadFromStruct(input interface{}) error {
 	properties, err := datastore.SaveStruct(input)
 	if err != nil {
 		return err
 	}
 
+	return list.Load(properties)
+}
+
+// LoadFromPartial loads all of the entity partial's properties into l.
+// It does not first reset *l to an empty slice.
+func (list *PropertyList) LoadFromPartial(input EntityPartial) error {
+	properties, err := datastore.SaveStruct(input.Entity())
+	if err != nil {
+		return err
+	}
+
 	var (
-		count  = len(names)
-		output = []datastore.Property{}
+		names    = input.Properties()
+		count    = len(names)
+		modified = []datastore.Property{}
 	)
 
 	if count == 0 {
@@ -68,11 +80,11 @@ func (list *PropertyList) LoadFromStruct(input interface{}, names ...string) err
 
 	for _, property := range properties {
 		if index := sort.SearchStrings(names, property.Name); index < count {
-			output = append(output, property)
+			modified = append(modified, property)
 		}
 	}
 
-	return list.Load(output)
+	return list.Load(modified)
 }
 
 // LoadStruct loads the properties from *list to dst.
