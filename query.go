@@ -5,7 +5,7 @@ import "cloud.google.com/go/datastore"
 // Query represents a database query.
 type Query struct {
 	Ancestor *datastore.Key
-	FilterBy []*Filter
+	Where    []*Filter
 	OrderBy  []string
 	Offset   int
 	Limit    int
@@ -17,7 +17,7 @@ func (q *Query) Build(query *datastore.Query) *datastore.Query {
 		query = query.Ancestor(q.Ancestor)
 	}
 
-	for _, filter := range q.FilterBy {
+	for _, filter := range q.Where {
 		query = query.Filter(filter.Expr, filter.Value)
 	}
 
