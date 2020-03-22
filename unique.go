@@ -12,9 +12,6 @@ import (
 
 var cache = reflectx.NewMapper("firestorm")
 
-// PrimaryKey is the primary key name
-const PrimaryKey = "__key__"
-
 // UniqueConstraint represents a unique constraint in datastore
 type UniqueConstraint struct {
 	Client *datastore.Client
@@ -44,12 +41,12 @@ func (u *UniqueConstraint) Check(tx *datastore.Transaction, input Entity) error 
 	}
 
 	for _, prop := range properties {
-		if prop.Name == PrimaryKey {
+		if prop.Name == "__key__" {
 			continue
 		}
 
 		if !u.unique(root, key, prop) {
-			return u.violate(prop.Name, input.Kind())
+			return ErrorViolate("unique", prop.Name, input.Kind())
 		}
 	}
 
@@ -64,14 +61,16 @@ func (u *UniqueConstraint) properties(input interface{}) ([]datastore.Property, 
 	)
 
 	for _, field := range objType.Names {
-		if _, ok := field.Options["unique"]; ok {
-			prop := datastore.Property{
-				Name:  field.Name,
-				Value: objValue.FieldByIndex(field.Index).Interface(),
-			}
-
-			properties = append(properties, prop)
+		if _, ok := field.Options["unique"]; !ok {
+			continue
 		}
+
+		prop := datastore.Property{
+			Name:  field.Name,
+			Value: objValue.FieldByIndex(field.Index).Interface(),
+		}
+
+		properties = append(properties, prop)
 	}
 
 	return properties, nil
@@ -98,8 +97,4 @@ func (u *UniqueConstraint) unique(query *datastore.Query, key *datastore.Key, pr
 	}
 
 	return true
-}
-
-func (u *UniqueConstraint) violate(prop, kind string) error {
-	return fmt.Errorf("violation of unique key constraint '%v'. cannot insert duplicate key in kind '%s'", prop, kind)
 }
