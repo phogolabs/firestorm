@@ -17,6 +17,28 @@ type UniqueConstraint struct {
 	Client *datastore.Client
 }
 
+// CanInsert checks the entity whether it can be inserted
+func (u *UniqueConstraint) CanInsert(tx *datastore.Transaction, input Entity) error {
+	key := input.Key()
+
+	if key != nil && !key.Incomplete() {
+		var (
+			empty = &PropertyList{}
+			err   = tx.Get(key, empty)
+		)
+
+		switch {
+		case err == datastore.ErrNoSuchEntity:
+		case err == nil:
+			return ErrorViolateKey("id", input.Kind())
+		default:
+			return err
+		}
+	}
+
+	return u.Check(tx, input)
+}
+
 // Check the unique contrants
 func (u *UniqueConstraint) Check(tx *datastore.Transaction, input Entity) error {
 	key := input.Key()
