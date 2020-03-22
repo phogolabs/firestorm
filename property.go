@@ -79,7 +79,11 @@ func (list *PropertyList) LoadFromPartial(input EntityPartial) error {
 	sort.Strings(names)
 
 	for _, property := range properties {
-		if index := sort.SearchStrings(names, property.Name); index < count {
+		filter := func(i int) bool {
+			return names[i] == property.Name
+		}
+
+		if index := sort.Search(count, filter); index < count {
 			modified = append(modified, property)
 		}
 	}
