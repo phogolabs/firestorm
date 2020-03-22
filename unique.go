@@ -46,7 +46,7 @@ func (u *UniqueConstraint) Check(tx *datastore.Transaction, input Entity) error 
 		}
 
 		if !u.unique(root, key, prop) {
-			return ErrorViolate("unique", prop.Name, input.Kind())
+			return ErrorViolateUnique(prop.Name, input.Kind())
 		}
 	}
 
