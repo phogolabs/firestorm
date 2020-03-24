@@ -7,7 +7,7 @@ func String(v string) *string {
 
 // StringValue returns the string from a string pointer v.
 func StringValue(v *string) string {
-	if value == nil {
+	if v == nil {
 		return ""
 	}
 
