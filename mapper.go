@@ -10,60 +10,67 @@ import (
 	"github.com/mitchellh/hashstructure"
 )
 
-var mapper = &IndexMapper{
-	mu:    &sync.Mutex{},
-	cache: make(map[reflect.Type]*IndexTree),
-}
-
 // IndexMapper represents the indexer
 type IndexMapper struct {
-	mu    *sync.Mutex
-	cache map[reflect.Type]*IndexTree
+	Mutex *sync.Mutex
+	Cache map[reflect.Type]*IndexTree
 }
 
 // Tree returns the index tree
 func (m *IndexMapper) Tree(t reflect.Type) *IndexTree {
-	t = t.Elem()
-	tree, ok := m.cache[t]
+	m.Mutex.Lock()
+
+	switch t.Kind() {
+	case reflect.Ptr:
+		t = t.Elem()
+	case reflect.Struct:
+	default:
+		return nil
+	}
+
+	tree, ok := m.Cache[t]
 
 	if !ok {
 		tree = m.build(t)
-		m.cache[t] = tree
+		m.Cache[t] = tree
 	}
 
+	m.Mutex.Unlock()
 	return tree
 }
 
 func (m *IndexMapper) build(t reflect.Type) *IndexTree {
-	kv := make(map[string]*Index)
+	maptree := make(map[string]*Index)
 
 	for i := 0; i < t.NumField(); i++ {
-		tags, err := structtag.Parse(string(t.Field(i).Tag))
+		field := t.Field(i)
+
+		tags, err := structtag.Parse(string(field.Tag))
 		if err != nil {
 			continue
 		}
 
-		index, err := tags.Get("index")
+		tag, err := tags.Get("index")
 		if err != nil {
 			continue
 		}
 
-		metadata, ok := kv[index.Name]
+		index, ok := maptree[tag.Name]
 
 		if !ok {
-			metadata = &Index{
-				Name:   index.Name,
-				Unique: true,
+			index = &Index{
+				Name: tag.Name,
 			}
 		}
 
-		metadata.Properties = append(metadata.Properties, i)
-		kv[index.Name] = metadata
+		index.Properties = append(index.Properties, field.Index)
+
+		maptree[index.Name] = index
 	}
 
 	tree := IndexTree{}
 
-	for _, index := range kv {
+	for _, index := range maptree {
 		tree = append(tree, index)
 	}
 
@@ -75,6 +82,10 @@ type IndexTree []*Index
 
 // Keys returns the keys
 func (t *IndexTree) Keys(key *datastore.Key, input reflect.Value) ([]*IndexKey, error) {
+	if key == nil {
+		return nil, datastore.ErrInvalidKey
+	}
+
 	keys := []*IndexKey{}
 
 	for _, index := range *t {
@@ -83,45 +94,26 @@ func (t *IndexTree) Keys(key *datastore.Key, input reflect.Value) ([]*IndexKey, 
 			return nil, err
 		}
 
-		keys = append(keys, t.key(key, index.Name, hash))
+		indexKey := &IndexKey{
+			Key: &datastore.Key{
+				Name:      fmt.Sprintf("%v", hash),
+				Kind:      fmt.Sprintf("%s_%s_index", key.Kind, index.Name),
+				Namespace: key.Namespace,
+			},
+			Hash: hash,
+		}
+
+		keys = append(keys, indexKey)
 	}
 
 	return keys, nil
-}
-
-func (t *IndexTree) key(key *datastore.Key, name string, hash uint64) *IndexKey {
-	return &IndexKey{
-		Key: &datastore.Key{
-			Name:      fmt.Sprintf("%v", hash),
-			Kind:      "position",
-			Namespace: key.Namespace,
-			Parent: &datastore.Key{
-				Name:      name,
-				Kind:      "index",
-				Namespace: key.Namespace,
-				Parent: &datastore.Key{
-					Name:      "constraint",
-					Kind:      "metadata",
-					Namespace: key.Namespace,
-					Parent: &datastore.Key{
-						Name:      key.Kind,
-						Kind:      "kind",
-						Namespace: key.Namespace,
-					},
-				},
-			},
-		},
-		Hash: hash,
-	}
 }
 
 // Index represents the index
 type Index struct {
 	Name string
 	// should be string
-	Properties []int
-	// Unique indexes
-	Unique bool
+	Properties [][]int
 }
 
 // Hash calculates the index value
@@ -131,7 +123,7 @@ func (index *Index) Hash(v reflect.Value) (uint64, error) {
 	v = reflect.Indirect(v)
 
 	for _, position := range index.Properties {
-		value := v.Field(position).Interface()
+		value := v.FieldByIndex(position).Interface()
 		fingerprint = append(fingerprint, value)
 	}
 

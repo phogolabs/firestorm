@@ -2,9 +2,15 @@ package firestorm
 
 import (
 	"reflect"
+	"sync"
 
 	"cloud.google.com/go/datastore"
 )
+
+var mapper = &IndexMapper{
+	Mutex: &sync.Mutex{},
+	Cache: make(map[reflect.Type]*IndexTree),
+}
 
 // Indexer represents an entity indexer
 type Indexer interface {
@@ -60,12 +66,7 @@ func NewUpdateIndexer(key *datastore.Key, input interface{}) Indexer {
 			return err
 		}
 
-		err = tx.Get(key, empty.Interface())
-
-		switch {
-		case err == datastore.ErrNoSuchEntity:
-			return nil
-		case err != nil:
+		if err = tx.Get(key, empty.Interface()); err != nil {
 			return err
 		}
 
