@@ -51,7 +51,7 @@ func NewInsertIndexer(key *datastore.Key, input interface{}) Indexer {
 	return IndexerFunc(fn)
 }
 
-// NewUpdateIndexer represents an upsert check
+// NewUpdateIndexer represents an update indexer
 func NewUpdateIndexer(key *datastore.Key, input interface{}) Indexer {
 	var (
 		kind   = reflect.TypeOf(input)
@@ -67,6 +67,54 @@ func NewUpdateIndexer(key *datastore.Key, input interface{}) Indexer {
 		}
 
 		if err = tx.Get(key, empty.Interface()); err != nil {
+			return err
+		}
+
+		treePrev, err := tree.Keys(key, empty)
+		if err != nil {
+			return err
+		}
+
+		ops := []*datastore.Mutation{}
+
+		for index, next := range treeNext {
+			prev := treePrev[index]
+
+			if prev.Hash == next.Hash {
+				continue
+			}
+
+			ops = append(ops, datastore.NewDelete(prev.Key))
+			ops = append(ops, datastore.NewInsert(next.Key, next))
+		}
+
+		_, err = tx.Mutate(ops...)
+		return err
+	}
+
+	return IndexerFunc(fn)
+}
+
+// NewUpsertIndexer represents an update indexer
+func NewUpsertIndexer(key *datastore.Key, input interface{}) Indexer {
+	var (
+		kind   = reflect.TypeOf(input)
+		tree   = mapper.Tree(kind)
+		empty  = reflect.New(kind.Elem())
+		entity = reflect.ValueOf(input)
+	)
+
+	fn := func(tx *datastore.Transaction) error {
+		treeNext, err := tree.Keys(key, entity)
+		if err != nil || len(treeNext) == 0 {
+			return err
+		}
+
+		err = tx.Get(key, empty.Interface())
+
+		switch {
+		case err == datastore.ErrNoSuchEntity:
+		case err != nil:
 			return err
 		}
 

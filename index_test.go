@@ -220,6 +220,41 @@ var _ = Describe("NewUpdateIndexer", func() {
 	})
 })
 
+// var _ = Describe("NewUpsertndexer", func() {
+// 	var (
+// 		ctx    context.Context
+// 		entity *Entity
+// 		client *datastore.Client
+// 	)
+
+// 	BeforeEach(func() {
+// 		ctx = context.TODO()
+
+// 		entity = &Entity{
+// 			ID:        datastore.NameKey("entity", "007", nil),
+// 			FirstName: "John",
+// 			LastName:  "Doe",
+// 			Email:     "john@example.com",
+// 		}
+
+// 		var err error
+
+// 		client, err = datastore.NewClient(ctx, "foo-bar")
+// 		Expect(err).NotTo(HaveOccurred())
+// 	})
+
+// 	AfterEach(func() {
+// 		Expect(client.Delete(ctx, &datastore.Key{
+// 			Name: "14491862341308332741",
+// 			Kind: "entity_email_index",
+// 		})).To(Succeed())
+
+// 		Expect(client.Delete(ctx, entity.ID)).To(Succeed())
+// 		Expect(client.Close()).To(Succeed())
+// 	})
+
+// })
+
 var _ = Describe("NewDeleteIndexer", func() {
 	var (
 		ctx    context.Context
