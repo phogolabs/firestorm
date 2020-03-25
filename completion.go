@@ -8,23 +8,25 @@ import (
 
 // Completion completes the given key
 type Completion struct {
+	Key    *datastore.Key
 	Client *datastore.Client
 }
 
 // CompletionOf returns the completion
-func CompletionOf(client *datastore.Client) *Completion {
+func CompletionOf(client *datastore.Client, key *datastore.Key) *Completion {
 	return &Completion{
+		Key:    key,
 		Client: client,
 	}
 }
 
-// Key completes a given key
-func (k *Completion) Key(ctx context.Context, key *datastore.Key, entity datastore.KeyLoader) error {
-	if key.Incomplete() {
+// LoadKey completes a given key
+func (k *Completion) LoadKey(ctx context.Context, entity datastore.KeyLoader) error {
+	if !k.Key.Incomplete() {
 		return nil
 	}
 
-	incomplete := []*datastore.Key{key}
+	incomplete := []*datastore.Key{k.Key}
 	complete, err := k.Client.AllocateIDs(ctx, incomplete)
 
 	if err != nil {
